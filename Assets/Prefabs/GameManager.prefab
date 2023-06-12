@@ -104,6 +104,8 @@ MonoBehaviour:
   startGameCanvas: {fileID: 0}
   inGameCanvas: {fileID: 0}
   gameOverCanvas: {fileID: 0}
+  settingsCanvas: {fileID: 0}
+  howToPlayGameCanvas: {fileID: 0}
   circle: {fileID: 0}
   firstBlock: {fileID: 0}
 --- !u!1 &7539185856623797956

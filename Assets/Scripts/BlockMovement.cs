@@ -28,6 +28,4 @@ public class BlockMovement : MonoBehaviour,IPooledObject
             rb.AddForce(new Vector2(0, jumpForce), ForceMode2D.Force);
         }
     }
-
-
 }

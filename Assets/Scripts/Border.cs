@@ -9,7 +9,7 @@ public class Border : MonoBehaviour
         if (collision.gameObject.CompareTag("Player"))
         {
             GameManager.Instance.GameOver();
-            GameManager.Instance.ShowGameOverCanvas();
+            GameManager.Instance.ShowCanvas("GameOverCanvas");
         }
         else if(collision.gameObject.name== "FirstBlock")
         {

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -10,20 +11,31 @@ using UnityEngine.UI;
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
-    [SerializeField] GameObject startGameCanvas;
-    [SerializeField] GameObject inGameCanvas;
-    [SerializeField] GameObject gameOverCanvas;
+    public GameObject[] canvasses;
     [SerializeField] GameObject circle;
     [SerializeField] GameObject firstBlock;
-
+    public Toggle[] toggles;
    
     Vector2 circleBeginningPos;
     Vector2 firstBlockBeginningPos;
-    
+    int gameModeValue;
+    [SerializeField] float touchScreenCanvasWaitTime;
+    public enum GameMod
+    {
+        PhoneRotation,
+        TouchScreen
+    }
+    public GameMod currentGameMod;
     private void Awake()
     {
+        UpdateMode();
         Singleton();
         Time.timeScale = 0f;
+    }
+    private void Update()
+    {
+        Debug.Log("Current game mode: " + currentGameMod);
+        Debug.Log("gameModeValue " + gameModeValue);
     }
 
     private void Singleton()
@@ -40,7 +52,7 @@ public class GameManager : MonoBehaviour
     }
     private void Start()
     {
-        ShowStartGameCanvas();
+        ShowCanvas("StartGameCanvas");
         circleBeginningPos =circle.transform.position;
         firstBlockBeginningPos=firstBlock.transform.position;
         ScoreManager.Instance.ShowBestScoreInStartGame();
@@ -49,20 +61,22 @@ public class GameManager : MonoBehaviour
     }
     public void StartGame()
     {
+        if(currentGameMod==GameMod.TouchScreen)
+        {
+            StartCoroutine(WaitTime("TouchScreenCanvas", touchScreenCanvasWaitTime));
+        }
         AudioManager.Instance.Play("Theme");
         Time.timeScale = 1f;
         AddAllBlocksToPool();
         AddAllTrianglesToPool();
-        CloseStartGameCanvas();
-        ShowInGameCanvas();
+        CloseCanvas("StartGameCanvas");
+        ShowCanvas("InGameCanvas");
         ScoreManager.Instance.ResetScore();
         circle.transform.position = circleBeginningPos;
         firstBlock.SetActive(true);
         firstBlock.transform.position = firstBlockBeginningPos;
         circle.GetComponent<Rigidbody2D>().velocity = new Vector2(0f, 0f);
         firstBlock.GetComponent<Rigidbody2D>().velocity = new Vector2(0f, 3f);
-
-        //Tüm bloklar poola eklencek
     }
     public void GameOver()
     {
@@ -70,17 +84,19 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 0f;
         AddAllBlocksToPool();
         AddAllTrianglesToPool();
-        CloseInGameCanvas();
-        ShowGameOverCanvas();
+        CloseCanvas("InGameCanvas");
+        ShowCanvas("GameOverCanvas");
         ScoreManager.Instance.ShowScoreInGameOver();
-
-        //Tüm bloklar poola eklencek
     }
     public void RestartGame()
     {
+        if (currentGameMod == GameMod.TouchScreen)
+        {
+            StartCoroutine(WaitTime("TouchScreenCanvas", touchScreenCanvasWaitTime));
+        }
         AudioManager.Instance.Play("Theme");
-        CloseGameOverCanvas();
-        ShowInGameCanvas();
+        CloseCanvas("GameOverCanvas");
+        ShowCanvas("InGameCanvas");
         AddAllBlocksToPool();
         AddAllTrianglesToPool();
         circle.transform.position= circleBeginningPos;
@@ -90,12 +106,24 @@ public class GameManager : MonoBehaviour
         firstBlock.GetComponent<Rigidbody2D>().velocity= new Vector2(0f, 3f);
         Time.timeScale=1f;
         ScoreManager.Instance.ResetScore();
-        //Tüm bloklar poola eklencek
+    }
+    public void SettingsMenu()
+    {
+        CloseCanvas("StartGameCanvas");
+        ShowCanvas("SettingsCanvas");
+    }
+    public void HowToPlayCanvas()
+    {
+        CloseCanvas("StartGameCanvas");
+        ShowCanvas("HowToPlayGameCanvas");
     }
     public void BackToStartGame()
     {
-        CloseGameOverCanvas();
-        ShowStartGameCanvas();
+        UpdateMode();
+        CloseCanvas("SettingsCanvas");
+        CloseCanvas("GameOverCanvas");
+        CloseCanvas("HowToPlayGameCanvas");
+        ShowCanvas("StartGameCanvas");
         ScoreManager.Instance.ShowBestScoreInStartGame();
         ScoreManager.Instance.UpdateTriangleScoreDisplay();
     }
@@ -115,29 +143,74 @@ public class GameManager : MonoBehaviour
             triangle.SetActive(false);
         }
     }
-    public void ShowStartGameCanvas()
+    public void ShowCanvas(GameObject canvas)
     {
-        startGameCanvas.SetActive(true);
+        canvas.SetActive(true);
     }
-    public void CloseStartGameCanvas()
+    public void CloseCanvas(GameObject canvas)
     {
-        startGameCanvas.SetActive(false);
+        canvas.SetActive(false);
     }
-    public void ShowInGameCanvas()
+    public void ShowCanvas(string canvas)
     {
-        inGameCanvas.SetActive(true);
+        GameObject tmpCanvas = Array.Find(canvasses, canvass => canvass.name == canvas);
+        if(tmpCanvas == null)
+        {
+            Debug.LogWarning("Canvas " + canvas + "not found");
+            return;
+        }
+        tmpCanvas.SetActive(true);
     }
-    public void CloseInGameCanvas()
+    public void CloseCanvas(string canvas)
     {
-        inGameCanvas.SetActive(false);
+        GameObject tmpCanvas = Array.Find(canvasses, canvass => canvass.name == canvas);
+        if (tmpCanvas == null)
+        {
+            Debug.LogWarning("Canvas " + canvas + "not found");
+            return;
+        }
+        tmpCanvas.SetActive(false);
     }
-    public void ShowGameOverCanvas()
+    public void ChangeMode()
     {
-        gameOverCanvas.SetActive(true);  
+        if (toggles[0].isOn)
+        {
+            currentGameMod = GameMod.PhoneRotation;
+            PlayerPrefs.SetInt("GameMode", 0);
+        }
+        else if (toggles[1].isOn)
+        {
+            currentGameMod = GameMod.TouchScreen;
+            PlayerPrefs.SetInt("GameMode", 1);
+        }
     }
-    public void CloseGameOverCanvas()
+    public void UpdateMode()
     {
-        gameOverCanvas.SetActive(false);
+        gameModeValue = PlayerPrefs.GetInt("GameMode", 0);
+        if (gameModeValue == 0)
+        {
+            toggles[0].isOn = true;
+            toggles[1].isOn = false;
+            currentGameMod = GameMod.PhoneRotation;
+        }
+        else if (gameModeValue == 1)
+        {
+            toggles[1].isOn = true;
+            toggles[0].isOn = false;
+            currentGameMod = GameMod.TouchScreen;
+        }
+    }
+    IEnumerator WaitTime(string canvas,float time)
+    {
+        GameObject tmpCanvas = Array.Find(canvasses, canvass => canvass.name == canvas);
+        if (tmpCanvas == null)
+        {
+            Debug.LogWarning("Canvas " + canvas + "not found");
+            yield break;
+        }
+        tmpCanvas.SetActive(true);
+        yield return new WaitForSeconds(time);
+        tmpCanvas.SetActive(false);
     }
     public void QuitGame()
     {
@@ -147,6 +220,4 @@ public class GameManager : MonoBehaviour
     {
         SceneManager.LoadScene(name);
     }
-   
-
 };

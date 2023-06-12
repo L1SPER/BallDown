@@ -72,5 +72,4 @@ public class ScoreManager : MonoBehaviour
     {
         bestScoreTextInStartGame.text = "Best Score : " + PlayerPrefs.GetInt("High Score", 0).ToString() ;
     }
-    
 }
